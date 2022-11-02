@@ -33,6 +33,10 @@ public class Teleop extends OpMode {
     private final int mediumPolePos = 3813;
     private final int longPolePos = 5408;
 
+    private final int ticksPerRev = 529;
+    private final int maxRPM = 300;
+    private final int powerVeloCoef = ticksPerRev * maxRPM;
+
     @Override
     public void start() {
         runtime.reset();
@@ -81,10 +85,11 @@ public class Teleop extends OpMode {
         double strafe = gamepad1.left_stick_x;
         double turn = gamepad1.right_stick_x;
 
-        frontLeftPower = drive + strafe + turn;
-        frontRightPower = drive - strafe - turn;
-        backLeftPower = drive - strafe + turn;
-        backRightPower = drive + strafe - turn;
+        //UNSURE ABOUT
+        frontLeftPower = (drive + strafe + turn) / (1 + Math.sqrt(2.0));
+        frontRightPower = (drive - strafe - turn) / (1 + Math.sqrt(2.0));
+        backLeftPower = (drive - strafe + turn) / (1 + Math.sqrt(2.0));
+        backRightPower = (drive + strafe - turn) / (1 + Math.sqrt(2.0));
 
         currentPosition = slide.getCurrentPosition();
 
@@ -127,22 +132,18 @@ public class Teleop extends OpMode {
             slide.setPower(.5);
         }
 
-//        if (gamepad1.a) {
-//            slide.setPower(.5);
-//        } else {
-//            slide.setPower(0);
-//        }
 
-        //Power Setting
-        frontLeft.setPower(frontLeftPower);
-        frontRight.setPower(frontRightPower);
-        backLeft.setPower(backLeftPower);
-        backRight.setPower(backRightPower);
-
-//        slide.setPower(0.7);
+        //Power Setting TODO
+//        frontLeft.setPower(frontLeftPower);
+//        frontRight.setPower(frontRightPower);
+//        backLeft.setPower(backLeftPower);
+//        backRight.setPower(backRightPower);
+        frontLeft.setVelocity(frontLeftPower * powerVeloCoef);
+        frontRight.setVelocity(frontRightPower * powerVeloCoef);
+        backLeft.setVelocity(backLeftPower * powerVeloCoef);
+        backRight.setVelocity(backRightPower * powerVeloCoef);
 
         telemetry.addData("Status", "Run Time: " + runtime.toString());
-        telemetry.addData("slidePosition: ", slide.getCurrentPosition());
     }
 
 }
