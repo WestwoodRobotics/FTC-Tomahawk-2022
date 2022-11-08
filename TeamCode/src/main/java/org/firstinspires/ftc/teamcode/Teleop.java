@@ -19,11 +19,11 @@ public class Teleop extends OpMode {
 
     private DcMotorEx slide;
 
+    private Servo claw1 = null;
+
     private ElapsedTime runtime = new ElapsedTime();
 
-    //TODO
-//    private Servo claw1;
-//    private Servo claw2;
+
 
     //pole heights for slide
     //TODO
@@ -35,7 +35,7 @@ public class Teleop extends OpMode {
 
     private final int ticksPerRev = 529;
     private final int maxRPM = 300;
-    private final int powerVeloCoef = ticksPerRev * maxRPM;
+    private final int powerVeloCoef = 3000; //ticksPerRev * maxRPM
 
     @Override
     public void start() {
@@ -52,12 +52,16 @@ public class Teleop extends OpMode {
         backRight = hardwareMap.get(DcMotorEx.class, "backRight");
         slide = hardwareMap.get(DcMotorEx.class, "slide");
 
-        //TODO
+        claw1 = hardwareMap.get(Servo.class, "claw1");
+
+        //TODO Directions
         frontLeft.setDirection(DcMotorEx.Direction.FORWARD);
         frontRight.setDirection(DcMotorEx.Direction.FORWARD);
         backLeft.setDirection(DcMotorEx.Direction.FORWARD);
         backRight.setDirection(DcMotorEx.Direction.FORWARD);
         slide.setDirection(DcMotorEx.Direction.FORWARD);
+
+        claw1.setDirection(Servo.Direction.REVERSE);
 
         //Zero Power Behavior
         frontLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
@@ -69,6 +73,9 @@ public class Teleop extends OpMode {
         //ENCODER
         slide.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
         slide.setMode(DcMotor.RunMode.RESET_ENCODERS);
+
+        //servo range
+        claw1.scaleRange(0.8,1);
     }
     int targetPositon = 0;
     int currentPosition = 0;
@@ -85,7 +92,7 @@ public class Teleop extends OpMode {
         double strafe = gamepad1.left_stick_x;
         double turn = gamepad1.right_stick_x;
 
-        //UNSURE ABOUT
+        //UNSURE ABOUT TODO
         frontLeftPower = (drive + strafe + turn) / (1 + Math.sqrt(2.0));
         frontRightPower = (drive - strafe - turn) / (1 + Math.sqrt(2.0));
         backLeftPower = (drive - strafe + turn) / (1 + Math.sqrt(2.0));
@@ -111,6 +118,7 @@ public class Teleop extends OpMode {
             slide.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
             targetPositon = longPolePos;
         }
+
 
         if (targetPositon > currentPosition) {
             slide.setPower(.5);
@@ -142,6 +150,25 @@ public class Teleop extends OpMode {
         frontRight.setVelocity(frontRightPower * powerVeloCoef);
         backLeft.setVelocity(backLeftPower * powerVeloCoef);
         backRight.setVelocity(backRightPower * powerVeloCoef);
+
+
+        boolean clawOpen = gamepad1.right_bumper;
+        boolean clawClose = !gamepad1.right_bumper;
+
+        if (clawOpen) {
+
+            claw1.setPosition(1);
+
+        }
+        if (clawClose) {
+
+            claw1.setPosition(0);
+
+        }
+
+        double claw1Pos = claw1.getPosition();
+
+        telemetry.addData("Claw1", claw1Pos);
 
         telemetry.addData("Status", "Run Time: " + runtime.toString());
     }
