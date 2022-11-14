@@ -29,13 +29,17 @@ public class Teleop extends OpMode {
     //TODO
     //529.2 is how many ticks per one rotation
 
-    private final int smallPolePos = 3726;
-    private final int mediumPolePos = 3813;
-    private final int longPolePos = 5408;
+    private final int smallPolePos = 1599;
+    private final int mediumPolePos = 3548;
+    private final int longPolePos = 3899;
 
-    private final int ticksPerRev = 529;
-    private final int maxRPM = 300;
-    private final int powerVeloCoef = 3000; //ticksPerRev * maxRPM
+    //18.9 gear ratio - 529 ticksPerRev
+    //54.8 gear ratio - 1534 ticksPerRev
+    private final int ticksPerRev = 1534;
+
+    // private final int maxRPM = 300;
+    // private final int powerVeloCoef = 1500; //ticksPerRev * maxRPM
+
 
     @Override
     public void start() {
@@ -55,10 +59,11 @@ public class Teleop extends OpMode {
         claw1 = hardwareMap.get(Servo.class, "claw1");
 
         //TODO Directions
-        frontLeft.setDirection(DcMotorEx.Direction.FORWARD);
+        frontLeft.setDirection(DcMotorEx.Direction.REVERSE);
         frontRight.setDirection(DcMotorEx.Direction.FORWARD);
-        backLeft.setDirection(DcMotorEx.Direction.FORWARD);
+        backLeft.setDirection(DcMotorEx.Direction.REVERSE);
         backRight.setDirection(DcMotorEx.Direction.FORWARD);
+
         slide.setDirection(DcMotorEx.Direction.FORWARD);
 
         claw1.setDirection(Servo.Direction.REVERSE);
@@ -68,17 +73,17 @@ public class Teleop extends OpMode {
         frontRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         backLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         backRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+
         slide.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
 
         //ENCODER
         slide.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
-        slide.setMode(DcMotor.RunMode.RESET_ENCODERS);
+        slide.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER); //RESET_ENCODERS **************
 
-        //servo range
-        claw1.scaleRange(0.8,1);
     }
-    int targetPositon = 0;
+    int targetPosition = 0;
     int currentPosition = 0;
+    boolean slowMode = false;
 
     @Override
     public void loop() {
@@ -86,91 +91,98 @@ public class Teleop extends OpMode {
         double frontRightPower;
         double backLeftPower;
         double backRightPower;
+        double slidePower;
+
+
+        double speedMultiplier = 0.5;
+
+        if (slowMode) {
+            speedMultiplier = 0.2;
+        } else {
+            speedMultiplier = 0.5;
+        }
 
         //Mecanum Equations
         double drive = gamepad1.left_stick_y;
-        double strafe = gamepad1.left_stick_x;
-        double turn = gamepad1.right_stick_x;
+        double strafe = -gamepad1.left_stick_x;
+        double turn = -gamepad1.right_stick_x;
 
         //UNSURE ABOUT TODO
-        frontLeftPower = (drive + strafe + turn) / (1 + Math.sqrt(2.0));
-        frontRightPower = (drive - strafe - turn) / (1 + Math.sqrt(2.0));
-        backLeftPower = (drive - strafe + turn) / (1 + Math.sqrt(2.0));
-        backRightPower = (drive + strafe - turn) / (1 + Math.sqrt(2.0));
+        frontLeftPower = (drive + strafe + turn) * speedMultiplier;
+        frontRightPower = (drive - strafe - turn) * speedMultiplier;
+        backLeftPower = (drive - strafe + turn) * speedMultiplier;
+        backRightPower = (drive + strafe - turn) * speedMultiplier;
 
         currentPosition = slide.getCurrentPosition();
 
         //Slide Code
-        if (gamepad1.a) {
-            slide.setTargetPosition(0);
-            slide.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
-            targetPositon = 0;
-        } else if (gamepad1.b) {
-            slide.setTargetPosition(smallPolePos);
-            slide.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
-            targetPositon = smallPolePos;
-        } else if (gamepad1.x) {
-            slide.setTargetPosition(mediumPolePos);
-            slide.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
-            targetPositon = mediumPolePos;
-        } else if (gamepad1.y) {
-            slide.setTargetPosition(longPolePos);
-            slide.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
-            targetPositon = longPolePos;
+        if (gamepad2.left_trigger > 0 || gamepad2.right_trigger > 0) {
+//            slide.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            if (gamepad2.right_trigger > 0) {
+//                slide.setPower(.8);
+                targetPosition += 20;
+            } else if (gamepad2.left_trigger > 0) {
+//                slide.setPower(-.8);
+                targetPosition -= 20;
+            }
+        } else {
+            if (gamepad2.a) {
+                targetPosition = 0;
+            } else if (gamepad2.b) {
+                targetPosition = smallPolePos;
+            } else if (gamepad2.x) {
+                targetPosition = mediumPolePos;
+            } else if (gamepad2.y) {
+                targetPosition = longPolePos;
+            }
         }
 
-
-        if (targetPositon > currentPosition) {
-            slide.setPower(.5);
+        //limits
+        if (targetPosition > 5000) {
+            targetPosition = 5000;
+        } else if (targetPosition < 0) {
+            targetPosition = 0;
         }
-        else if (currentPosition > targetPositon) {
-            slide.setPower(-.5);
-        }
-        else if (currentPosition == targetPositon) {
+        slide.setTargetPosition(targetPosition);
+        slide.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
+        if (targetPosition > currentPosition) {
+            slide.setPower(.8);
+        } else if (currentPosition > targetPosition) {
+            slide.setPower(-.8);
+        } else if (currentPosition == targetPosition) {
             slide.setPower(0);
         }
 
-        if (gamepad1.dpad_left) {
-            slide.setPower(0);
-        }
-        if (gamepad1.dpad_up) {
-            slide.setPower(.5);
-        }
-        if (gamepad1.dpad_down) {
-            slide.setPower(.5);
-        }
-
-
-        //Power Setting TODO
-//        frontLeft.setPower(frontLeftPower);
-//        frontRight.setPower(frontRightPower);
-//        backLeft.setPower(backLeftPower);
-//        backRight.setPower(backRightPower);
-        frontLeft.setVelocity(frontLeftPower * powerVeloCoef);
-        frontRight.setVelocity(frontRightPower * powerVeloCoef);
-        backLeft.setVelocity(backLeftPower * powerVeloCoef);
-        backRight.setVelocity(backRightPower * powerVeloCoef);
-
-
-        boolean clawOpen = gamepad1.right_bumper;
-        boolean clawClose = !gamepad1.right_bumper;
+        boolean clawOpen = gamepad2.right_bumper;
 
         if (clawOpen) {
-
-            claw1.setPosition(1);
-
-        }
-        if (clawClose) {
-
             claw1.setPosition(0);
 
+        } else {
+            claw1.setPosition(1);
         }
 
         double claw1Pos = claw1.getPosition();
 
-        telemetry.addData("Claw1", claw1Pos);
+        //Power Setting TODO
+        frontLeft.setPower(frontLeftPower);
+        frontRight.setPower(frontRightPower);
+        backLeft.setPower(backLeftPower);
+        backRight.setPower(backRightPower);
+
+        telemetry.addData("slide power:", slide.getPower() );
+
+        //fast mode/slow mode toggle
+        if (gamepad1.dpad_up) {
+            slowMode = false;
+        } else if (gamepad1.dpad_down) {
+            slowMode = true;
+        }
 
         telemetry.addData("Status", "Run Time: " + runtime.toString());
+        telemetry.addData("Status", "SLide Ticks: " + currentPosition);
+        telemetry.addData("leftTrigger: ", gamepad2.left_trigger);
+        telemetry.addData("right trigger: ", gamepad2.right_trigger);
     }
 
 }
