@@ -93,11 +93,10 @@ public class Teleop extends OpMode {
         double backRightPower;
         double slidePower;
 
-
-        double speedMultiplier = 0.5;
+        double speedMultiplier;
 
         if (slowMode) {
-            speedMultiplier = 0.2;
+            speedMultiplier = 0.3;
         } else {
             speedMultiplier = 0.5;
         }
@@ -107,7 +106,6 @@ public class Teleop extends OpMode {
         double strafe = -gamepad1.left_stick_x;
         double turn = -gamepad1.right_stick_x;
 
-        //UNSURE ABOUT TODO
         frontLeftPower = (drive + strafe + turn) * speedMultiplier;
         frontRightPower = (drive - strafe - turn) * speedMultiplier;
         backLeftPower = (drive - strafe + turn) * speedMultiplier;
