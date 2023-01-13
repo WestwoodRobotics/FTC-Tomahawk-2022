@@ -10,7 +10,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 import java.util.*;
 
-@TeleOp(name="Tomahawk")
+@TeleOp(name="Tomahawk Teleop")
 public class Teleop extends OpMode {
     private DcMotorEx frontLeft;
     private DcMotorEx frontRight;
@@ -26,12 +26,10 @@ public class Teleop extends OpMode {
 
 
     //pole heights for slide
-    //TODO
     //529.2 is how many ticks per one rotation
-
-    private final int smallPolePos = 1599;
-    private final int mediumPolePos = 3548;
-    private final int longPolePos = 3899;
+    private final int smallPolePos = 1094;
+    private final int mediumPolePos = 1650;
+    private final int longPolePos = 2290;
 
     //18.9 gear ratio - 529 ticksPerRev
     //54.8 gear ratio - 1534 ticksPerRev
@@ -58,7 +56,6 @@ public class Teleop extends OpMode {
 
         claw1 = hardwareMap.get(Servo.class, "claw1");
 
-        //TODO Directions
         frontLeft.setDirection(DcMotorEx.Direction.REVERSE);
         frontRight.setDirection(DcMotorEx.Direction.FORWARD);
         backLeft.setDirection(DcMotorEx.Direction.REVERSE);
@@ -96,9 +93,9 @@ public class Teleop extends OpMode {
         double speedMultiplier;
 
         if (slowMode) {
-            speedMultiplier = 0.3;
+            speedMultiplier = 0.2;
         } else {
-            speedMultiplier = 0.5;
+            speedMultiplier = 0.7;
         }
 
         //Mecanum Equations
@@ -113,7 +110,7 @@ public class Teleop extends OpMode {
 
         currentPosition = slide.getCurrentPosition();
 
-        //Slide Code
+        //Slide Code --------------------------------------------------------------------------------------------
         if (gamepad2.left_trigger > 0 || gamepad2.right_trigger > 0) {
 //            slide.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             if (gamepad2.right_trigger > 0) {
@@ -151,18 +148,20 @@ public class Teleop extends OpMode {
             slide.setPower(0);
         }
 
+        //-----------------------------------------------------------------------------------------
         boolean clawOpen = gamepad2.right_bumper;
 
+        //TODO
         if (clawOpen) {
-            claw1.setPosition(0);
+            claw1.setPosition(0.7);
 
         } else {
-            claw1.setPosition(1);
+            claw1.setPosition(0.2);
         }
 
         double claw1Pos = claw1.getPosition();
 
-        //Power Setting TODO
+        //Power Setting
         frontLeft.setPower(frontLeftPower);
         frontRight.setPower(frontRightPower);
         backLeft.setPower(backLeftPower);
@@ -179,8 +178,11 @@ public class Teleop extends OpMode {
 
         telemetry.addData("Status", "Run Time: " + runtime.toString());
         telemetry.addData("Status", "SLide Ticks: " + currentPosition);
+        telemetry.addData("Status", "Target position: " + targetPosition);
         telemetry.addData("leftTrigger: ", gamepad2.left_trigger);
         telemetry.addData("right trigger: ", gamepad2.right_trigger);
+        telemetry.addData("right bumper: ", gamepad2.right_bumper);
+        telemetry.addData("Slowmode: ", slowMode);
     }
 
 }
