@@ -28,10 +28,11 @@ public class Teleop extends OpMode {
     //pole heights for slide
     //529.2 is how many ticks per one rotation
     private final int smallPolePos = 1094;
-    private final int mediumPolePos = 1650;
-    private final int longPolePos = 2290;
+    private final int mediumPolePos = 1790;
+    private final int longPolePos = 2414;
 
     //18.9 gear ratio - 529 ticksPerRev
+
     //54.8 gear ratio - 1534 ticksPerRev
     private final int ticksPerRev = 1534;
 
@@ -115,10 +116,10 @@ public class Teleop extends OpMode {
 //            slide.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             if (gamepad2.right_trigger > 0) {
 //                slide.setPower(.8);
-                targetPosition += 20;
+                targetPosition += 10;
             } else if (gamepad2.left_trigger > 0) {
 //                slide.setPower(-.8);
-                targetPosition -= 20;
+                targetPosition -= 10;
             }
         } else {
             if (gamepad2.a) {
@@ -170,9 +171,9 @@ public class Teleop extends OpMode {
         telemetry.addData("slide power:", slide.getPower() );
 
         //fast mode/slow mode toggle
-        if (gamepad1.dpad_up) {
+        if (gamepad1.left_bumper) {
             slowMode = false;
-        } else if (gamepad1.dpad_down) {
+        } else if (gamepad1.right_bumper) {
             slowMode = true;
         }
 

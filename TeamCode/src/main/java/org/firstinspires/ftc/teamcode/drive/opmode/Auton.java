@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.drive.opmode;
 
 /*
  * Copyright (c) 2021 OpenFTC Team
@@ -21,20 +21,29 @@ package org.firstinspires.ftc.teamcode;
  * SOFTWARE.
  */
 
+import com.acmerobotics.roadrunner.geometry.Pose2d;
+import com.acmerobotics.roadrunner.geometry.Vector2d;
+import com.acmerobotics.roadrunner.trajectory.Trajectory;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
-import org.firstinspires.ftc.teamcode.drive.opmode.AprilTagDetectionPipeline;
+import org.firstinspires.ftc.teamcode.drive.SampleMecanumDrive;
+import org.firstinspires.ftc.teamcode.trajectorysequence.TrajectorySequence;
 import org.openftc.apriltag.AprilTagDetection;
 import org.openftc.easyopencv.OpenCvCamera;
 import org.openftc.easyopencv.OpenCvCameraFactory;
 import org.openftc.easyopencv.OpenCvCameraRotation;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
-@TeleOp
-public class AprilTagAutonomousInitDetectionExample extends LinearOpMode
+@Autonomous(name="Tomahawk Auton")
+public class Auton extends LinearOpMode
 {
     OpenCvCamera camera;
     AprilTagDetectionPipeline aprilTagDetectionPipeline;
@@ -53,7 +62,7 @@ public class AprilTagAutonomousInitDetectionExample extends LinearOpMode
     // UNITS ARE METERS
     double tagsize = 0.166;
 
-//    int ID_TAG_OF_INTEREST = 18; // Tag ID 18 from the 36h11 family
+    //    int ID_TAG_OF_INTEREST = 18; // Tag ID 18 from the 36h11 family
     int LEFT = 1;
     int MIDDLE = 2;
     int RIGHT = 3;
@@ -63,6 +72,87 @@ public class AprilTagAutonomousInitDetectionExample extends LinearOpMode
     @Override
     public void runOpMode()
     {
+        SampleMecanumDrive drive = new SampleMecanumDrive(hardwareMap);
+        DcMotorEx slide = hardwareMap.get(DcMotorEx.class, "slide");
+        Servo claw1 = hardwareMap.get(Servo.class, "claw1");
+
+        //TODO--------------------------------------------------------------------------------------------
+        final int smallPolePos = 1094;
+        final int mediumPolePos = 1790;
+        final int longPolePos = 2500;
+        final int stack = 100;
+
+
+        Pose2d startPose = new Pose2d(-36, -72, Math.toRadians(270));
+        drive.setPoseEstimate(startPose);
+
+        TrajectorySequence toHigh = drive.trajectorySequenceBuilder (startPose)
+                .addTemporalMarker(0, () -> {
+                    slide.setTargetPosition(200);
+                    slide.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                    slide.setPower(.8);
+                })
+                .strafeLeft(72)
+                // (-36, 0)
+                .addTemporalMarker(0, () -> {
+                    slide.setTargetPosition(longPolePos);
+                    slide.setPower(.8);
+                })
+                .forward(3)
+                // (-33, 0)
+                .build();
+
+        //Takes robot in the middle of the square right in front of the stack
+        TrajectorySequence toFaceStackLn = drive.trajectorySequenceBuilder(toHigh.end())
+                .back(3)
+                // (-36, 0)
+                .addTemporalMarker(0, () -> {
+                    slide.setTargetPosition(0);
+                    slide.setPower(-.8);
+                })
+                .strafeRight(12)
+                .turn(Math.toRadians(180))
+                .forward(24)
+//                .lineToLinearHeading(new Pose2d(-36, -12, Math.toRadians(180)))
+                .build();
+
+        //Takes robot right in front of the stack
+        TrajectorySequence toConeStack = drive.trajectorySequenceBuilder(toFaceStackLn.end())
+                .addTemporalMarker(0, () -> {
+                    slide.setTargetPosition(stack);
+                    slide.setPower(.8);
+                })
+                .forward(24+11)
+                .build();
+
+        //Basically toFaceStackLn and toConeStack combined into a spline
+        TrajectorySequence toStackSpl = drive.trajectorySequenceBuilder (toHigh.end())
+                .addTemporalMarker(0, () -> {
+                    slide.setTargetPosition(0);
+                    slide.setPower(-.8);
+                })
+                .splineTo(new Vector2d(-60, -12), Math.toRadians(180))
+                .build();
+
+        //Takes robot from cone stack to high pole
+        TrajectorySequence toHighAgain = drive.trajectorySequenceBuilder (toConeStack.end()) //TODO (ask abraham what the fuck he did)
+                .addTemporalMarker(0, () -> {
+                    slide.setTargetPosition(200);
+                    slide.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                    slide.setPower(.8);
+                })
+                .strafeLeft(72)
+                // (-36, 0)
+                .addTemporalMarker(0, () -> {
+                    slide.setTargetPosition(longPolePos);
+                    slide.setPower(.8);
+                })
+                .forward(3)
+                // (-33, 0)
+                .build();
+
+        //TODO--------------------------------------------------------------------------------------------
+
         int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
         camera = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "Webcam 1"), cameraMonitorViewId);
         aprilTagDetectionPipeline = new AprilTagDetectionPipeline(tagsize, fx, fy, cx, cy);
@@ -166,18 +256,29 @@ public class AprilTagAutonomousInitDetectionExample extends LinearOpMode
             telemetry.update();
         }
 
+        //TODO------------------------------------------------------------------------------
+        telemetry.addData("before", "y");
+        claw1.setPosition(.7);
+        sleep(2000);
+        drive.followTrajectorySequence(toHigh);
+        claw1.setPosition(.2);
+        sleep(2000);
+        drive.followTrajectorySequence(toFaceStackLn);
+        sleep(10000);
+        telemetry.addData("after", "y");
+        //TODO------------------------------------------------------------------------------
+
         /* Actually do something useful */
-        if(tagOfInterest == null || tagOfInterest.id == LEFT)
-        {
-            // left
+        if (tagOfInterest == null || tagOfInterest.id == LEFT) {
+
         } else if (tagOfInterest.id == MIDDLE) {
-            // midddle
+
         } else {
-            // right
+
         }
 
 
-
+        telemetry.update();
         /* You wouldn't have this in your autonomous, this is just to prevent the sample from ending */
         while (opModeIsActive()) {sleep(20);}
     }
@@ -193,3 +294,4 @@ public class AprilTagAutonomousInitDetectionExample extends LinearOpMode
         telemetry.addLine(String.format("Rotation Roll: %.2f degrees", Math.toDegrees(detection.pose.roll)));
     }
 }
+
