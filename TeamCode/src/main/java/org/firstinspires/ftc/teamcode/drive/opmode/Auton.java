@@ -74,82 +74,109 @@ public class Auton extends LinearOpMode
     {
         SampleMecanumDrive drive = new SampleMecanumDrive(hardwareMap);
         DcMotorEx slide = hardwareMap.get(DcMotorEx.class, "slide");
+        DcMotorEx slide2 = hardwareMap.get(DcMotorEx.class, "slide2");
+
+        slide.setDirection(DcMotorEx.Direction.FORWARD);
+        slide2.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        slide.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+        slide2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        slide.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+        slide.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        slide2.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+        slide2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
         Servo claw1 = hardwareMap.get(Servo.class, "claw1");
 
         //TODO--------------------------------------------------------------------------------------------
-        final int smallPolePos = 1094;
-        final int mediumPolePos = 1790;
-        final int longPolePos = 2500;
+        final int smallPolePos = 487;
+        final int mediumPolePos = 783;
+        final int longPolePos = 1048;
+        final double clawClose = 0.7;
+        final double clawOpen = 0.2;
         final int stack = 100;
 
 
-        Pose2d startPose = new Pose2d(-36, -72, Math.toRadians(270));
+        Pose2d startPose = new Pose2d(-36, -68, Math.toRadians(0));
         drive.setPoseEstimate(startPose);
 
-        TrajectorySequence toHigh = drive.trajectorySequenceBuilder (startPose)
+        TrajectorySequence toMedium1 = drive.trajectorySequenceBuilder(startPose)
                 .addTemporalMarker(0, () -> {
-                    slide.setTargetPosition(200);
-                    slide.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                    slide.setPower(.8);
+                    slide2.setTargetPosition(200);
+                    slide2.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                    slide2.setPower(1);
                 })
-                .strafeLeft(72)
-                // (-36, 0)
-                .addTemporalMarker(0, () -> {
-                    slide.setTargetPosition(longPolePos);
-                    slide.setPower(.8);
+                .lineToLinearHeading(new Pose2d(-33,-24,Math.toRadians(0)))
+                .UNSTABLE_addTemporalMarkerOffset(-2, () -> {
+                    slide2.setTargetPosition(mediumPolePos);
+                    slide2.setPower(1);
                 })
-                .forward(3)
-                // (-33, 0)
                 .build();
 
-        //Takes robot in the middle of the square right in front of the stack
-        TrajectorySequence toFaceStackLn = drive.trajectorySequenceBuilder(toHigh.end())
-                .back(3)
-                // (-36, 0)
+        TrajectorySequence toStack1 = drive.trajectorySequenceBuilder(toMedium1.end())
                 .addTemporalMarker(0, () -> {
-                    slide.setTargetPosition(0);
-                    slide.setPower(-.8);
+                    slide2.setTargetPosition(184);
+                    slide2.setPower(-1);
                 })
-                .strafeRight(12)
-                .turn(Math.toRadians(180))
-                .forward(24)
-//                .lineToLinearHeading(new Pose2d(-36, -12, Math.toRadians(180)))
+                .lineToLinearHeading(new Pose2d(-63,-12,Math.toRadians(180) -1e-6))
                 .build();
 
-        //Takes robot right in front of the stack
-        TrajectorySequence toConeStack = drive.trajectorySequenceBuilder(toFaceStackLn.end())
+        TrajectorySequence toMedium2 = drive.trajectorySequenceBuilder(toStack1.end())
                 .addTemporalMarker(0, () -> {
-                    slide.setTargetPosition(stack);
-                    slide.setPower(.8);
+                    slide2.setTargetPosition(mediumPolePos);
+                    slide2.setPower(1);
                 })
-                .forward(24+11)
+                .waitSeconds(0.3)
+                .lineToLinearHeading(new Pose2d(-22.5,-14,Math.toRadians(-90) +1e-6))
                 .build();
 
-        //Basically toFaceStackLn and toConeStack combined into a spline
-        TrajectorySequence toStackSpl = drive.trajectorySequenceBuilder (toHigh.end())
+        TrajectorySequence toStack2 = drive.trajectorySequenceBuilder(toMedium2.end())
                 .addTemporalMarker(0, () -> {
-                    slide.setTargetPosition(0);
-                    slide.setPower(-.8);
+                    claw1.setPosition(clawClose);
+                    slide2.setTargetPosition(160);
+                    slide2.setPower(-1);
                 })
-                .splineTo(new Vector2d(-60, -12), Math.toRadians(180))
+                .lineToLinearHeading(new Pose2d(-65,-12,Math.toRadians(180) -1e-6))
+                .UNSTABLE_addTemporalMarkerOffset(-2, () -> {
+                    claw1.setPosition(clawOpen);
+                })
                 .build();
 
-        //Takes robot from cone stack to high pole
-        TrajectorySequence toHighAgain = drive.trajectorySequenceBuilder (toConeStack.end()) //TODO (ask abraham what the fuck he did)
+        TrajectorySequence toMedium3 = drive.trajectorySequenceBuilder(toStack2.end())
                 .addTemporalMarker(0, () -> {
-                    slide.setTargetPosition(200);
-                    slide.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                    slide.setPower(.8);
+                    slide2.setTargetPosition(mediumPolePos);
+                    slide2.setPower(1);
                 })
-                .strafeLeft(72)
-                // (-36, 0)
-                .addTemporalMarker(0, () -> {
-                    slide.setTargetPosition(longPolePos);
-                    slide.setPower(.8);
-                })
-                .forward(3)
-                // (-33, 0)
+                .waitSeconds(0.3)
+                .lineToLinearHeading(new Pose2d(-23,-16,Math.toRadians(-90) +1e-6))
                 .build();
+
+        TrajectorySequence leftPark = drive.trajectorySequenceBuilder(toMedium3.end())
+                .addTemporalMarker(0, () -> {
+                    slide2.setTargetPosition(0);
+                    slide2.setPower(-1);
+                })
+                .lineToLinearHeading(new Pose2d(-60,-12,Math.toRadians(-90)))
+                .build();
+
+        TrajectorySequence middlePark = drive.trajectorySequenceBuilder(toMedium3.end())
+                .addTemporalMarker(0, () -> {
+                    slide2.setTargetPosition(0);
+                    slide2.setPower(-1);
+                })
+                .lineToLinearHeading(new Pose2d(-36,-12,Math.toRadians(-90)))
+                .build();
+
+        TrajectorySequence rightPark = drive.trajectorySequenceBuilder(toMedium3.end())
+                .addTemporalMarker(0, () -> {
+                    slide2.setTargetPosition(0);
+                    slide2.setPower(-1);
+                })
+                .lineToLinearHeading(new Pose2d(-12,-12,Math.toRadians(-90)))
+                .build();
+
+
 
         //TODO--------------------------------------------------------------------------------------------
 
@@ -258,23 +285,36 @@ public class Auton extends LinearOpMode
 
         //TODO------------------------------------------------------------------------------
         telemetry.addData("before", "y");
-        claw1.setPosition(.7);
-        sleep(2000);
-        drive.followTrajectorySequence(toHigh);
-        claw1.setPosition(.2);
-        sleep(2000);
-        drive.followTrajectorySequence(toFaceStackLn);
-        sleep(10000);
+
+        claw1.setPosition(clawClose);
+        sleep(1000);
+        drive.followTrajectorySequence(toMedium1);
+        claw1.setPosition(clawOpen);
+        drive.followTrajectorySequence(toStack1);
+        claw1.setPosition(clawClose);
+        sleep(300);
+        drive.followTrajectorySequence(toMedium2);
+        claw1.setPosition(clawOpen);
+        drive.followTrajectorySequence(toStack2);
+        claw1.setPosition(clawClose);
+        sleep(300);
+        drive.followTrajectorySequence(toMedium3);
+        claw1.setPosition(clawOpen);
+        sleep(500);
+
         telemetry.addData("after", "y");
         //TODO------------------------------------------------------------------------------
 
         /* Actually do something useful */
         if (tagOfInterest == null || tagOfInterest.id == LEFT) {
-
+            claw1.setPosition(clawClose);
+            drive.followTrajectorySequence(leftPark);
         } else if (tagOfInterest.id == MIDDLE) {
-
+            claw1.setPosition(clawClose);
+            drive.followTrajectorySequence(middlePark);
         } else {
-
+            claw1.setPosition(clawClose);
+            drive.followTrajectorySequence(rightPark);
         }
 
 

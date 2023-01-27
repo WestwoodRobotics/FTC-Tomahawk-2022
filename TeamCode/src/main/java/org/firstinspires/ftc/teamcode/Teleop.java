@@ -18,6 +18,7 @@ public class Teleop extends OpMode {
     private DcMotorEx backRight;
 
     private DcMotorEx slide;
+    private DcMotorEx slide2;
 
     private Servo claw1 = null;
 
@@ -27,9 +28,9 @@ public class Teleop extends OpMode {
 
     //pole heights for slide
     //529.2 is how many ticks per one rotation
-    private final int smallPolePos = 1094;
-    private final int mediumPolePos = 1790;
-    private final int longPolePos = 2414;
+    private final int smallPolePos = 487;
+    private final int mediumPolePos = 783;
+    private final int longPolePos = 1048;
 
     //18.9 gear ratio - 529 ticksPerRev
 
@@ -41,6 +42,7 @@ public class Teleop extends OpMode {
 
 
     @Override
+
     public void start() {
         runtime.reset();
     }
@@ -54,6 +56,7 @@ public class Teleop extends OpMode {
         backLeft = hardwareMap.get(DcMotorEx.class, "backLeft");
         backRight = hardwareMap.get(DcMotorEx.class, "backRight");
         slide = hardwareMap.get(DcMotorEx.class, "slide");
+        slide2 = hardwareMap.get(DcMotorEx.class,"slide2");
 
         claw1 = hardwareMap.get(Servo.class, "claw1");
 
@@ -63,6 +66,7 @@ public class Teleop extends OpMode {
         backRight.setDirection(DcMotorEx.Direction.FORWARD);
 
         slide.setDirection(DcMotorEx.Direction.FORWARD);
+        slide2.setDirection(DcMotorSimple.Direction.REVERSE);
 
         claw1.setDirection(Servo.Direction.REVERSE);
 
@@ -73,10 +77,13 @@ public class Teleop extends OpMode {
         backRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
 
         slide.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+        slide2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         //ENCODER
         slide.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
-        slide.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER); //RESET_ENCODERS **************
+        slide.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        slide2.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+        slide2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);//RESET_ENCODERS **************
 
     }
     int targetPosition = 0;
@@ -109,17 +116,14 @@ public class Teleop extends OpMode {
         backLeftPower = (drive - strafe + turn) * speedMultiplier;
         backRightPower = (drive + strafe - turn) * speedMultiplier;
 
-        currentPosition = slide.getCurrentPosition();
+        currentPosition = slide2.getCurrentPosition();
 
         //Slide Code --------------------------------------------------------------------------------------------
         if (gamepad2.left_trigger > 0 || gamepad2.right_trigger > 0) {
-//            slide.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             if (gamepad2.right_trigger > 0) {
-//                slide.setPower(.8);
-                targetPosition += 10;
+                targetPosition += 3;
             } else if (gamepad2.left_trigger > 0) {
-//                slide.setPower(-.8);
-                targetPosition -= 10;
+                targetPosition -= 3;
             }
         } else {
             if (gamepad2.a) {
@@ -133,26 +137,30 @@ public class Teleop extends OpMode {
             }
         }
 
-        //limits
-        if (targetPosition > 5000) {
-            targetPosition = 5000;
+        //limits TODO if motors change again
+        if (targetPosition > 1100) {
+            targetPosition = 1100;
         } else if (targetPosition < 0) {
             targetPosition = 0;
         }
         slide.setTargetPosition(targetPosition);
         slide.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
+        slide2.setTargetPosition(targetPosition);
+        slide2.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
         if (targetPosition > currentPosition) {
-            slide.setPower(.8);
+//            slide.setPower(.8);
+            slide2.setPower(.8);
         } else if (currentPosition > targetPosition) {
-            slide.setPower(-.8);
+//            slide.setPower(-.8);
+            slide2.setPower(-.8);
         } else if (currentPosition == targetPosition) {
-            slide.setPower(0);
+//            slide.setPower(0);
+            slide2.setPower(0);
         }
 
         //-----------------------------------------------------------------------------------------
         boolean clawOpen = gamepad2.right_bumper;
 
-        //TODO
         if (clawOpen) {
             claw1.setPosition(0.7);
 
